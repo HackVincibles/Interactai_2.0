@@ -1,18 +1,15 @@
 /**
- * Round Handoff Generation API
- * 
+ * Round Handoff Generation API — Firestore-backed
+ *
  * Called after each interview round completes to:
  * 1. Generate structured handoff context from the transcript
- * 2. Store it with the round results
- * 3. Enable cross-round context for subsequent interviews
- * 
- * This uses Grok 4.1 reasoning for high-quality insight extraction.
+ * 2. Persist it into the Firestore interview document
+ * 3. Enable cross-round context for subsequent interviewers
  */
 
 import { NextResponse } from "next/server";
 import { generateRoundHandoff } from "@/lib/round-handoff";
-import { getInterview, getJob, interviewsStore } from "@/lib/store";
-import { interviews as mockInterviews, jobs as mockJobs } from "@/lib/mock-data";
+import { getInterviewById, getJobById, getMockPackById, updateInterview } from "@/lib/firestore-service";
 import type { TranscriptEntry } from "@/lib/types";
 
 interface HandoffRequest {
@@ -39,10 +36,8 @@ export async function POST(request: Request) {
     console.log(`[HANDOFF] Session: ${sessionId}`);
     console.log(`[HANDOFF] Transcript entries: ${transcript.length}`);
 
-    // Find the interview
-    let interview = getInterview(sessionId) || 
-                    interviewsStore.find(i => i.id === sessionId) ||
-                    mockInterviews.find(i => i.id === sessionId);
+    // Find the interview in Firestore
+    const interview = await getInterviewById(sessionId);
 
     if (!interview) {
       return NextResponse.json(
@@ -51,62 +46,51 @@ export async function POST(request: Request) {
       );
     }
 
-    // Find the job for requirements context
-    const job = getJob(interview.jobId) || mockJobs.find(j => j.id === interview.jobId);
-    
-    if (!job) {
-      return NextResponse.json(
-        { error: "Job not found for interview" },
-        { status: 404 }
-      );
-    }
+    // Resolve job title + requirements for context
+    let jobTitle = "Software Engineer";
+    let requirements: string[] = [];
 
-    // Get round duration
-    const duration = roundType === "hr" ? job.interviewConfig.hrDuration :
-                     roundType === "technical" ? job.interviewConfig.technicalDuration :
-                     job.interviewConfig.codingDuration;
-
-    // Generate handoff context using Grok 4.1
-    const handoff = await generateRoundHandoff(
-      roundType,
-      transcript,
-      duration,
-      job.title,
-      job.requirements
-    );
-
-    console.log(`[HANDOFF] ✅ HANDOFF GENERATED SUCCESSFULLY:`);
-    console.log(`  📋 Topics discussed: ${handoff.topicsDiscussed.length} → ${handoff.topicsDiscussed.slice(0, 3).join(", ")}${handoff.topicsDiscussed.length > 3 ? "..." : ""}`);
-    console.log(`  🎯 Claims to verify: ${handoff.candidateClaims.length}`);
-    if (handoff.candidateClaims.length > 0) {
-      console.log(`     Example: "${handoff.candidateClaims[0].claim.substring(0, 60)}..."`);
-    }
-    console.log(`  🔍 Areas to explore: ${handoff.areasToExplore.length}`);
-    console.log(`  ✨ Positive signals: ${handoff.positiveSignals.length}`);
-    console.log(`  💬 Discussion points: ${handoff.discussionPoints.length}`);
-    console.log(`${"=".repeat(60)}\n`);
-
-    // Update the interview with handoff data
-    const interviewIndex = interviewsStore.findIndex(i => i.id === sessionId);
-    if (interviewIndex !== -1) {
-      const roundKey = roundType as keyof typeof interview.rounds;
-      if (interview.rounds[roundKey]) {
-        interviewsStore[interviewIndex].rounds[roundKey] = {
-          ...interviewsStore[interviewIndex].rounds[roundKey],
-          transcript,
-          handoff: {
-            topicsDiscussed: handoff.topicsDiscussed,
-            candidateClaims: handoff.candidateClaims,
-            areasToExplore: handoff.areasToExplore,
-            positiveSignals: handoff.positiveSignals,
-            discussionPoints: handoff.discussionPoints,
-            completedAt: handoff.completedAt,
-          },
-          status: "completed",
-        };
-        console.log(`[Handoff API] Updated interview ${sessionId} with ${roundType} handoff`);
+    if (interview.type === "hiring" && interview.jobId) {
+      const job = await getJobById(interview.jobId);
+      if (job) {
+        jobTitle = job.title;
+        // requirements not stored separately; derive from description if needed
+      }
+    } else if (interview.type === "mock" && interview.mockPackId) {
+      const pack = await getMockPackById(interview.mockPackId);
+      if (pack) {
+        jobTitle = pack.title;
       }
     }
+
+    const duration = 15; // default; improve by storing round duration in interview doc
+
+    // Generate handoff context using Grok
+    const handoff = await generateRoundHandoff(roundType, transcript, duration, jobTitle, requirements);
+
+    console.log(`[HANDOFF] ✅ HANDOFF GENERATED SUCCESSFULLY:`);
+    console.log(`  📋 Topics discussed: ${handoff.topicsDiscussed.length}`);
+    console.log(`  🎯 Claims to verify: ${handoff.candidateClaims.length}`);
+    console.log(`  🔍 Areas to explore: ${handoff.areasToExplore.length}`);
+    console.log(`  ✨ Positive signals: ${handoff.positiveSignals.length}`);
+    console.log(`${"=".repeat(60)}\n`);
+
+    // Persist handoff into Firestore interview doc under `{roundType}Handoff`
+    const handoffPayload = {
+      topicsDiscussed: handoff.topicsDiscussed,
+      candidateClaims: handoff.candidateClaims,
+      areasToExplore: handoff.areasToExplore,
+      positiveSignals: handoff.positiveSignals,
+      discussionPoints: handoff.discussionPoints,
+      completedAt: handoff.completedAt,
+    };
+
+    await updateInterview(sessionId, {
+      [`${roundType}Handoff`]: handoffPayload,
+      [`${roundType}Status`]: "completed",
+    } as never);
+
+    console.log(`[Handoff API] Updated interview ${sessionId} with ${roundType} handoff in Firestore`);
 
     return NextResponse.json({
       success: true,
@@ -130,7 +114,8 @@ export async function POST(request: Request) {
 }
 
 /**
- * GET endpoint to retrieve handoff data for a session
+ * GET /api/interview/handoff?sessionId=xxx
+ * Retrieve stored handoff data for all rounds of a session
  */
 export async function GET(request: Request) {
   try {
@@ -138,42 +123,32 @@ export async function GET(request: Request) {
     const sessionId = searchParams.get("sessionId");
 
     if (!sessionId) {
-      return NextResponse.json(
-        { error: "Missing sessionId parameter" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing sessionId parameter" }, { status: 400 });
     }
 
-    const interview = getInterview(sessionId) || 
-                      interviewsStore.find(i => i.id === sessionId) ||
-                      mockInterviews.find(i => i.id === sessionId);
+    const interview = await getInterviewById(sessionId);
 
     if (!interview) {
-      return NextResponse.json(
-        { error: "Interview session not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Interview session not found" }, { status: 404 });
     }
 
-    // Collect all handoff data
+    const interviewAny = interview as unknown as Record<string, unknown>;
+
     const handoffs = {
-      hr: interview.rounds?.hr?.handoff || null,
-      technical: interview.rounds?.technical?.handoff || null,
-      coding: interview.rounds?.coding?.handoff || null,
+      hr: interviewAny["hrHandoff"] ?? null,
+      technical: interviewAny["technicalHandoff"] ?? null,
+      coding: interviewAny["codingHandoff"] ?? null,
     };
 
     return NextResponse.json({
       sessionId,
       handoffs,
       completedRounds: Object.entries(handoffs)
-        .filter(([_, h]) => h !== null)
+        .filter(([, h]) => h !== null)
         .map(([round]) => round),
     });
   } catch (error) {
     console.error("[Handoff API] GET Error:", error);
-    return NextResponse.json(
-      { error: "Failed to retrieve handoffs" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to retrieve handoffs" }, { status: 500 });
   }
 }

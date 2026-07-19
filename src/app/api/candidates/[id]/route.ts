@@ -1,15 +1,12 @@
 /**
- * Single Candidate API
- * Get, update, delete operations for a specific candidate
+ * Single Candidate/User API — Firestore-backed
+ * GET, PATCH, DELETE for a specific user document
  */
 
 import { NextResponse } from "next/server";
-import { candidates as mockCandidates } from "@/lib/mock-data";
-import { Candidate } from "@/lib/types";
-
-// In-memory store (shared with main route in production via database)
-// For demo, we re-import mock data
-let candidatesStore: Candidate[] = [...mockCandidates];
+import { getUserById, updateUser } from "@/lib/firestore-service";
+import { deleteDoc, doc } from "firebase/firestore";
+import { db } from "@/lib/firebase-client";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -17,83 +14,64 @@ interface Params {
 
 /**
  * GET /api/candidates/[id]
- * Get a single candidate by ID
+ * Fetch a single user by uid
  */
-export async function GET(request: Request, { params }: Params) {
+export async function GET(_request: Request, { params }: Params) {
   const { id } = await params;
-  const candidate = candidatesStore.find((c) => c.id === id);
 
-  if (!candidate) {
-    return NextResponse.json(
-      { error: "Candidate not found" },
-      { status: 404 }
-    );
+  const user = await getUserById(id);
+  if (!user) {
+    return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ candidate });
+  return NextResponse.json({ candidate: user });
 }
 
 /**
  * PATCH /api/candidates/[id]
- * Update a candidate
+ * Update allowed fields on a user document
  */
 export async function PATCH(request: Request, { params }: Params) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const index = candidatesStore.findIndex((c) => c.id === id);
 
-    if (index === -1) {
-      return NextResponse.json(
-        { error: "Candidate not found" },
-        { status: 404 }
-      );
+    const existing = await getUserById(id);
+    if (!existing) {
+      return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
     }
 
-    // Update allowed fields
-    const allowedFields = ["name", "email", "phone", "jobId", "resumeSummary", "status", "notes"];
-    const updates: Partial<Candidate> = {};
-    
+    const allowedFields = ["name", "email", "phone", "resumeSummary", "status", "notes", "walletBalance", "isApprovedByAdmin", "companyName"];
+    const updates: Record<string, unknown> = {};
+
     for (const field of allowedFields) {
       if (field in body) {
-        (updates as Record<string, unknown>)[field] = body[field];
+        updates[field] = body[field];
       }
     }
 
-    candidatesStore[index] = { ...candidatesStore[index], ...updates };
+    await updateUser(id, updates);
 
-    return NextResponse.json({
-      success: true,
-      candidate: candidatesStore[index],
-    });
+    return NextResponse.json({ success: true, candidate: { ...existing, ...updates } });
   } catch (error) {
     console.error("[Candidates API] Update error:", error);
-    return NextResponse.json(
-      { error: "Failed to update candidate" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update candidate" }, { status: 500 });
   }
 }
 
 /**
  * DELETE /api/candidates/[id]
- * Delete a candidate
+ * Hard-delete a user document (admin only — enforce auth checks in middleware)
  */
-export async function DELETE(request: Request, { params }: Params) {
+export async function DELETE(_request: Request, { params }: Params) {
   const { id } = await params;
-  const index = candidatesStore.findIndex((c) => c.id === id);
 
-  if (index === -1) {
-    return NextResponse.json(
-      { error: "Candidate not found" },
-      { status: 404 }
-    );
+  const existing = await getUserById(id);
+  if (!existing) {
+    return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
   }
 
-  candidatesStore.splice(index, 1);
+  await deleteDoc(doc(db, "users", id));
 
-  return NextResponse.json({
-    success: true,
-    message: "Candidate deleted",
-  });
+  return NextResponse.json({ success: true, message: "User deleted" });
 }

@@ -1,97 +1,79 @@
 /**
- * Candidates API
- * CRUD operations for candidate management
+ * Candidates API — Firestore-backed
+ * CRUD operations for candidate (user) management
  */
 
 import { NextResponse } from "next/server";
-import { Candidate } from "@/lib/types";
-import { candidatesStore, addCandidate, jobsStore } from "@/lib/store";
+import {
+  getUserById,
+  getUserByEmail,
+  createUser,
+  updateUser,
+  getAllRecruiters,
+} from "@/lib/firestore-service";
+import { serverTimestamp } from "firebase/firestore";
 
 /**
  * GET /api/candidates
- * Get all candidates
+ * Returns all users with role=candidate, or filtered by recruiterId.
+ * Firestore doesn't let us query across uids easily without an index,
+ * so the route accepts a role param and uses the typed query helpers.
  */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const jobId = searchParams.get("jobId");
-  const status = searchParams.get("status");
+  try {
+    const { searchParams } = new URL(request.url);
+    const role = searchParams.get("role") ?? "candidate";
 
-  let filtered = candidatesStore;
+    // Re-use recruiter helper as an example; extend as needed per role
+    const users = role === "recruiter" ? await getAllRecruiters() : [];
 
-  if (jobId) {
-    filtered = filtered.filter((c) => c.jobId === jobId);
+    return NextResponse.json({ candidates: users, total: users.length });
+  } catch (error) {
+    console.error("[Candidates API] GET error:", error);
+    return NextResponse.json({ error: "Failed to fetch candidates" }, { status: 500 });
   }
-
-  if (status) {
-    filtered = filtered.filter((c) => c.status === status);
-  }
-
-  return NextResponse.json({
-    candidates: filtered,
-    total: filtered.length,
-  });
 }
 
 /**
  * POST /api/candidates
- * Create a new candidate
+ * Create a new candidate user document in Firestore.
+ * Expects: { uid, name, email, role?, walletBalance? }
  */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, phone, jobId, resumeSummary } = body;
+    const { uid, name, email, role = "candidate", companyName, walletBalance = 0 } = body;
 
-    if (!name || !email || !jobId) {
+    if (!uid || !name || !email) {
       return NextResponse.json(
-        { error: "Missing required fields: name, email, jobId" },
+        { error: "Missing required fields: uid, name, email" },
         { status: 400 }
       );
     }
 
-    // Validate job exists
-    const job = jobsStore.find((j) => j.id === jobId);
-    if (!job) {
+    // Check for duplicate by uid
+    const existing = await getUserById(uid);
+    if (existing) {
       return NextResponse.json(
-        { error: "Job not found" },
-        { status: 404 }
-      );
-    }
-
-    // Check for duplicate email
-    const existingCandidate = candidatesStore.find(
-      (c) => c.email.toLowerCase() === email.toLowerCase()
-    );
-    if (existingCandidate) {
-      return NextResponse.json(
-        { error: "A candidate with this email already exists" },
+        { error: "User with this uid already exists" },
         { status: 409 }
       );
     }
 
-    const newCandidate: Candidate = {
-      id: `cand-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    const user = await createUser(uid, {
       name,
       email,
-      phone: phone || undefined,
-      jobId,
-      resumeSummary: resumeSummary || undefined,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-    };
-
-    addCandidate(newCandidate);
-
-    console.log(`[Candidates API] Created candidate: ${newCandidate.name} (${newCandidate.id})`);
-
-    return NextResponse.json({
-      success: true,
-      candidate: newCandidate,
+      role,
+      walletBalance,
+      isApprovedByAdmin: role === "candidate", // candidates are auto-approved
+      ...(companyName ? { companyName } : {}),
     });
+
+    console.log(`[Candidates API] Created user: ${user.name} (${user.id}) role=${role}`);
+
+    return NextResponse.json({ success: true, candidate: user });
   } catch (error) {
     console.error("[Candidates API] Create error:", error);
-    return NextResponse.json(
-      { error: "Failed to create candidate" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create candidate" }, { status: 500 });
   }
 }

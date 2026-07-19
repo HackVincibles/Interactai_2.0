@@ -19,7 +19,6 @@ import {
   Mail,
   Briefcase,
 } from "lucide-react";
-import { getCandidate, getJob } from "@/lib/store";
 import type { InterviewSession, CompetencyScores, AIInsights } from "@/lib/types";
 
 interface SummaryData {
@@ -29,6 +28,12 @@ interface SummaryData {
   overallRecommendation?: AIInsights["recommendation"];
   roundsCompleted: number;
   totalRounds: number;
+  // Enriched by the summary API
+  candidateName?: string;
+  candidateEmail?: string;
+  candidatePhone?: string;
+  jobTitle?: string;
+  jobCompany?: string;
 }
 
 export default function InterviewSummary({ params }: { params: Promise<{ id: string }> }) {
@@ -85,9 +90,8 @@ export default function InterviewSummary({ params }: { params: Promise<{ id: str
     );
   }
 
-  const { interview, overallScore, overallCompetencies, overallRecommendation, roundsCompleted, totalRounds } = summary;
-  const candidate = getCandidate(interview.candidateId);
-  const job = getJob(interview.jobId);
+  const { interview, overallScore, overallCompetencies, overallRecommendation, roundsCompleted, totalRounds,
+    candidateName, candidateEmail, candidatePhone, jobTitle, jobCompany } = summary;
 
   const getRecommendationColor = (rec?: AIInsights["recommendation"]) => {
     switch (rec) {
@@ -127,10 +131,10 @@ export default function InterviewSummary({ params }: { params: Promise<{ id: str
           <div>
             <p className="text-sm text-[--grok-gray-400]">Interview Summary</p>
             <h1 className="text-3xl font-bold text-[--grok-white] mt-1">
-              {candidate?.name || "Candidate"}
+              {candidateName || "Candidate"}
             </h1>
             <p className="text-sm text-[--grok-gray-400] mt-1">
-              {job?.title} at {job?.company}
+              {jobTitle} {jobCompany ? `at ${jobCompany}` : ""}
             </p>
           </div>
           <div className="flex gap-3">
@@ -212,12 +216,12 @@ export default function InterviewSummary({ params }: { params: Promise<{ id: str
           <CardContent className="space-y-3">
             <div className="flex items-center gap-3">
               <Mail className="size-4 text-[--grok-gray-400]" />
-              <span className="text-[--grok-white]">{candidate?.email}</span>
+              <span className="text-[--grok-white]">{candidateEmail ?? interview.candidateId}</span>
             </div>
-            {candidate?.phone && (
+            {candidatePhone && (
               <div className="flex items-center gap-3">
                 <Briefcase className="size-4 text-[--grok-gray-400]" />
-                <span className="text-[--grok-white]">{candidate.phone}</span>
+                <span className="text-[--grok-white]">{candidatePhone}</span>
               </div>
             )}
             <div className="flex items-center gap-3">

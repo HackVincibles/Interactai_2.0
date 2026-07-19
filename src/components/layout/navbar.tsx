@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Bell, CircleUserRound } from "lucide-react";
+import { ProfileDropdown } from "@/components/ui/profile-dropdown";
 
 export function Navbar() {
   return (
@@ -21,10 +22,7 @@ export function Navbar() {
           <Bell size={16} className="mr-2" />
           Alerts
         </button>
-        <div className="flex items-center gap-2 rounded-full border border-[--color-border] bg-[--grok-gray-800] px-3 py-2">
-          <CircleUserRound size={18} />
-          <span className="text-sm">Admin</span>
-        </div>
+        <ProfileDropdown />
       </div>
     </header>
   );
