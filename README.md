@@ -56,3 +56,4 @@ An AI-powered interview simulator that stitches together HR, technical, and codi
 - Replace the in-memory `lib/store.ts` with a database layer before putting this into production—everything ships with mocked data for now.
 
 If you spot rough edges or want to extend the pipeline, open an issue or start a PR. Happy interviewing.
+# Interactai_2.0
