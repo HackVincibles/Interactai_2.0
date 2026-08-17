@@ -1,10 +1,11 @@
-import { jobs } from "@/lib/mock-data";
+const jobs: any[] = [];
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Clock, Code2, MessageSquare, Users } from "lucide-react";
 import Link from "next/link";
-import { interviews, candidates } from "@/lib/mock-data";
+const interviews: any[] = [];
+const candidates: any[] = [];
 
 export default function JobsPage() {
   const getCandidateCount = (jobId: string) => {

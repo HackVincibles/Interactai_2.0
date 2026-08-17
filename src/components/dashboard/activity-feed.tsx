@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Clock, CheckCircle2, Code2, MessageSquare, Briefcase, ArrowUpRight } from "lucide-react";
-import { interviews, candidates, jobs } from "@/lib/mock-data";
+const interviews: any[] = [];
+const candidates: any[] = [];
+const jobs: any[] = [];
 import Link from "next/link";
 
 export function ActivityFeed() {

@@ -35,7 +35,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
 import { InterviewSession } from "@/lib/types";
-import { candidates, jobs } from "@/lib/mock-data";
+const candidates: any[] = [];
+const jobs: any[] = [];
 
 interface InterviewTableProps {
   data: InterviewSession[];

@@ -28,7 +28,7 @@ import { HelpButton } from "@/components/coding/help-button";
 import { TranscriptPanel } from "@/components/coding/transcript-panel";
 import type { CodeDeltaData, TestResultData } from "@/lib/coding-events";
 import type { TranscriptEntry, Candidate, InterviewSession } from "@/lib/types";
-import { interviews as mockInterviews, candidates as mockCandidates, jobs } from "@/lib/mock-data";
+
 
 // Helper to get stored candidates from localStorage
 const getStoredCandidates = (): Candidate[] => {
@@ -103,22 +103,11 @@ function CodingRoundInner({ id }: { id: string }) {
 
   const hints = currentProblem.hints;
   
-  // Try to find session from mock data first
-  const mockSession = mockInterviews.find((i) => i.id === id);
-  
   // State for dynamically loaded data  
   const [candidate, setCandidate] = useState<Candidate | null>(() => {
-    if (mockSession) {
-      return mockCandidates.find((c) => c.id === mockSession.candidateId) || null;
-    }
-    
     // Try to find candidate via interview mapping in localStorage
     const candidateId = getInterviewMapping(id);
     if (candidateId) {
-      // Check mock data first
-      const mockCandidate = mockCandidates.find(c => c.id === candidateId);
-      if (mockCandidate) return mockCandidate;
-      
       // Check localStorage
       const storedCandidates = getStoredCandidates();
       const storedCandidate = storedCandidates.find(c => c.id === candidateId);
@@ -134,8 +123,7 @@ function CodingRoundInner({ id }: { id: string }) {
     }
     return null;
   });
-  const job = mockSession ? jobs.find((j) => j.id === mockSession.jobId) : 
-              candidate ? jobs.find((j) => j.id === candidate.jobId) : null;
+  const job = null; // Removed mock job dependency
   
   // Initialize tests from the current problem
   const getInitialTests = () => convertToDisplayTests(currentProblem.testCases);

@@ -38,7 +38,7 @@ import {
   Database,
   Network,
 } from "lucide-react";
-import { interviews as mockInterviews, candidates as mockCandidates, jobs } from "@/lib/mock-data";
+
 import { useInterviewVoice } from "@/hooks/use-interview-voice";
 import { useInterviewAudio } from "@/hooks/use-interview-audio";
 import { useRoundHandoff } from "@/hooks/use-round-handoff";
@@ -81,23 +81,12 @@ const getInterviewMapping = (interviewId: string): string | null => {
 export default function TechnicalRound({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   
-  // Try to find session from mock data first
-  const mockSession = mockInterviews.find((i) => i.id === id);
-  
   // State for dynamically loaded data
-  const [session, setSession] = useState<InterviewSession | null>(mockSession || null);
+  const [session, setSession] = useState<InterviewSession | null>(null);
   const [candidate, setCandidate] = useState<Candidate | null>(() => {
-    if (mockSession) {
-      return mockCandidates.find((c) => c.id === mockSession.candidateId) || null;
-    }
-    
     // Try to find candidate via interview mapping in localStorage
     const candidateId = getInterviewMapping(id);
     if (candidateId) {
-      // Check mock data first
-      const mockCandidate = mockCandidates.find(c => c.id === candidateId);
-      if (mockCandidate) return mockCandidate;
-      
       // Check localStorage
       const storedCandidates = getStoredCandidates();
       const storedCandidate = storedCandidates.find(c => c.id === candidateId);
@@ -113,12 +102,11 @@ export default function TechnicalRound({ params }: { params: Promise<{ id: strin
     }
     return null;
   });
-  const job = session ? jobs.find((j) => j.id === session.jobId) : 
-              candidate ? jobs.find((j) => j.id === candidate.jobId) : null;
+  const job = null; // Removed mock job dependency
   
   // Load interview data from API if not in mock data
   useEffect(() => {
-    if (!mockSession && id.startsWith("int-")) {
+    if (id.startsWith("int-")) {
       // First check localStorage mapping
       const candidateId = getInterviewMapping(id);
       if (candidateId && !candidate) {
@@ -139,7 +127,7 @@ export default function TechnicalRound({ params }: { params: Promise<{ id: strin
         setCandidate(sorted[0]);
       }
     }
-  }, [id, mockSession, candidate]);
+  }, [id, candidate]);
   
   // Interview state
   const [isActive, setIsActive] = useState(false);

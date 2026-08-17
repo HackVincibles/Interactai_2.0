@@ -1,7 +1,8 @@
 import { ClipboardCheck, Clock3, Gauge, Users, TrendingUp, TrendingDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { interviews, candidates } from "@/lib/mock-data";
+const interviews: any[] = [];
+const candidates: any[] = [];
 
 export function StatsCards() {
   const activeInterviews = interviews.filter((i) => i.status === "in-progress").length;

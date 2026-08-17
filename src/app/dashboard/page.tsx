@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { interviews, candidates, jobs } from "@/lib/mock-data";
+const interviews: any[] = [];
+const candidates: any[] = [];
+const jobs: any[] = [];
 import Link from "next/link";
 import { Video, ArrowRight, Plus, Play } from "lucide-react";
 

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { candidates as initialCandidates, jobs, interviews } from "@/lib/mock-data";
+const initialCandidates: any[] = [];
+const jobs: any[] = [];
+const interviews: any[] = [];
 import { Candidate } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

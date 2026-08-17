@@ -65,12 +65,12 @@ const Gemini = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 
-const SAMPLE_PROFILE_DATA: Profile = {
-    name: "Eugene An",
-    email: "eugene@kokonutui.com",
-    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1760&q=80",
-    subscription: "PRO",
-    model: "Gemini 2.0 Flash",
+const GUEST_PROFILE_DATA: Profile = {
+    name: "Guest User",
+    email: "guest@interact.ai",
+    avatar: "https://ui-avatars.com/api/?name=Guest+User&background=random",
+    subscription: "FREE",
+    model: "Standard",
 };
 
 interface ProfileDropdownProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -79,7 +79,7 @@ interface ProfileDropdownProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function ProfileDropdown({
-    data = SAMPLE_PROFILE_DATA,
+    data = GUEST_PROFILE_DATA,
     className,
     ...props
 }: ProfileDropdownProps) {

@@ -3,7 +3,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { CandidateScorecard } from "@/components/dashboard/candidate-scorecard";
-import { interviews, candidates, jobs } from "@/lib/mock-data";
+const interviews: any[] = [];
+const candidates: any[] = [];
+const jobs: any[] = [];
 
 export default async function InterviewReportPage({
   params,

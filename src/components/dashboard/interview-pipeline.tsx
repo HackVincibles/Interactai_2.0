@@ -7,7 +7,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CheckCircle2, Clock, Circle, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { interviews, candidates, jobs } from "@/lib/mock-data";
+const interviews: any[] = [];
+const candidates: any[] = [];
+const jobs: any[] = [];
 
 export function InterviewPipeline() {
   const scheduled = interviews.filter((i) => i.status === "scheduled");

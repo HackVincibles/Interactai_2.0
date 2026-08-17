@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { candidates, interviewRounds, interviews, jobs } from "@/lib/mock-data";
+import { getInterviewById, getJobById, getUserById } from "@/lib/firestore-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,9 +7,15 @@ import { CheckCircle, Mic, Camera, Wifi, ArrowLeft } from "lucide-react";
 
 export default async function InterviewLobby({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = interviews.find((i) => i.id === id);
-  const candidate = candidates.find((c) => c.id === session?.candidateId);
-  const job = jobs.find((j) => j.id === session?.jobId);
+  const session = await getInterviewById(id);
+  const candidate = session ? await getUserById(session.candidateId) : null;
+  const job = session?.jobId ? await getJobById(session.jobId) : null;
+
+  const interviewRounds = [
+    { id: "hr", label: "HR Round", path: "hr", duration: "10 mins", description: "Behavioral & Cultural Fit" },
+    { id: "technical", label: "Technical Round", path: "technical", duration: "20 mins", description: "System Design & Architecture" },
+    { id: "coding", label: "Coding Round", path: "coding", duration: "30 mins", description: "Data Structures & Algorithms" }
+  ];
 
   return (
     <div className="min-h-screen bg-background px-6 py-10">

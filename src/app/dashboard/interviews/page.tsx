@@ -1,5 +1,5 @@
 import { InterviewTable } from "@/components/dashboard/interview-table";
-import { interviews } from "@/lib/mock-data";
+const interviews: any[] = [];
 import { Button } from "@/components/ui/button";
 import { Plus, Filter } from "lucide-react";
 import Link from "next/link";
